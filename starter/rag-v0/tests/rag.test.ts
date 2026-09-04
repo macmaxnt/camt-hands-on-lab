@@ -1,35 +1,23 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { answerQuestion, fallbackQueryVector, localCorpusAdapter } from "../lib/rag";
+import { answerQuestion, documents } from "../lib/rag";
 
-test("retrieves a cited grounded answer for learner data", () => {
-  const result = answerQuestion("How should a school protect learner data when using GenAI?");
-  assert.equal(result.status, "grounded");
-  assert.equal(result.citations[0].documentId, "data-privacy");
-  assert.ok(result.citations[0].score > 0.7);
-});
-
-test("returns a safe refusal for a claim outside the corpus", () => {
-  const result = answerQuestion("What is the CAMT tuition fee for next semester?");
-  assert.equal(result.status, "not_found");
+test("makes the Lab 1 starting state explicit", () => {
+  const result = answerQuestion(
+    "How should a school protect learner data when using GenAI?",
+  );
+  assert.equal(result.status, "not_implemented");
   assert.equal(result.citations.length, 0);
+  assert.match(result.answer, /not implemented/i);
 });
 
-test("asks to clarify a broad AI policy question", () => {
-  const result = answerQuestion("Should schools use AI?");
-  assert.equal(result.status, "ambiguous");
+test("keeps the starting-state message bilingual", () => {
+  const result = answerQuestion("ข้อมูลผู้เรียน", "th");
+  assert.equal(result.status, "not_implemented");
+  assert.match(result.answer, /ยังไม่ได้สร้าง/);
 });
 
-test("maps Thai privacy vocabulary to the fallback vector", () => {
-  assert.ok(fallbackQueryVector("โรงเรียนควรคุ้มครองข้อมูลผู้เรียนอย่างไร")[1] > 0);
-});
-
-test("keeps retrieval behind the local corpus adapter", () => {
-  assert.equal(localCorpusAdapter.search("privacy data")[0].document.id, "data-privacy");
-});
-
-test("supports an inspectable keyword retrieval path", () => {
-  const result = answerQuestion("learner data privacy", "en", "keyword");
-  assert.equal(result.status, "grounded");
-  assert.equal(result.citations[0].documentId, "data-privacy");
+test("retains source metadata for learners to connect to retrieval", () => {
+  assert.ok(documents.length >= 3);
+  assert.ok(documents.every((document) => document.chunkId && document.sourceUrl));
 });

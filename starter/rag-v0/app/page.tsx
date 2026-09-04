@@ -9,18 +9,21 @@ const copy = {
   en: {
     eyebrow: "AIAT x CAMT · Lab 1",
     title: "Trustworthy RAG Assistant",
-    subtitle: "Answers only from the approved UNESCO learning corpus.",
+    subtitle: "Lab 1 starter — retrieval and grounded answering are intentionally not implemented.",
     prompt: "Ask about AI in education…",
     ask: "Ask",
     retrieval: "Retrieval strategy",
     keyword: "Keyword / document store",
     semantic: "Semantic / vector index",
-    retrievalHint: "Retrieval selects approved evidence before the system answers.",
+    retrievalHint: "rag-v0 keeps this control visible, but it does not retrieve or answer yet.",
     system: "System map",
-    systemText: "Documents and metadata live in the document store. Chunks can also live in a vector index. This starter uses a compact fallback; the notebook parses the full 48-page source PDF. Both methods return evidence, then the answer stays within it.",
+    systemText: "This screen shows the components you will connect in Lab 1. The starter deliberately does not use a hidden fallback answer, so a response cannot look grounded before retrieval exists.",
     sources: "Sources",
     library: "Document library",
-    empty: "Ask a focused question to inspect evidence before the answer.",
+    empty: "Ask a question to see the intentional starting-state response.",
+    notImplemented: "Not implemented in rag-v0",
+    buildNext: "Build next",
+    buildSteps: "1. Ingest and chunk the corpus  2. Retrieve relevant chunks  3. Return a cited answer or a safe response",
     grounded: "Grounded answer",
     ambiguous: "Needs clarification",
     not_found: "Not supported by this corpus",
@@ -31,18 +34,21 @@ const copy = {
   th: {
     eyebrow: "AIAT x CAMT · Lab 1",
     title: "ผู้ช่วย RAG ที่ไว้ใจได้",
-    subtitle: "ตอบจากคลังความรู้ UNESCO เท่านั้น",
+    subtitle: "จุดเริ่มต้น Lab 1 — ยังไม่ได้สร้าง retrieval และ grounded answer โดยตั้งใจ",
     prompt: "ถามเรื่อง AI ในการศึกษา…",
     ask: "ถาม",
     retrieval: "กลยุทธ์การค้นคืนข้อมูล",
     keyword: "คำสำคัญ / document store",
     semantic: "ความหมาย / vector index",
-    retrievalHint: "Retrieval เลือกหลักฐานที่อนุมัติก่อนระบบจะตอบ",
+    retrievalHint: "rag-v0 แสดง control นี้ไว้ แต่ยังไม่ค้นคืนหรือสร้างคำตอบ",
     system: "แผนที่ระบบ",
-    systemText: "เอกสารและ metadata อยู่ใน document store ส่วน chunk อาจอยู่ใน vector index ได้ Starter นี้ใช้ fallback ขนาดเล็ก ส่วน notebook จะแยก PDF แหล่งข้อมูลจริง 48 หน้า ทั้งสองวิธีคืนหลักฐาน แล้วคำตอบต้องอยู่ในขอบเขตของหลักฐานนั้น",
+    systemText: "หน้านี้แสดงองค์ประกอบที่ต้องเชื่อมใน Lab 1 Starter ตั้งใจไม่ใช้คำตอบ fallback ที่ซ่อนอยู่ จึงไม่มีคำตอบใดดูเหมือนมีหลักฐานก่อนสร้าง retrieval จริง",
     sources: "แหล่งข้อมูล",
     library: "คลังเอกสาร",
-    empty: "ถามคำถามที่เฉพาะเจาะจง แล้วตรวจหลักฐานก่อนอ่านคำตอบ",
+    empty: "ถามคำถามเพื่อดู starting-state response ที่ตั้งใจไว้",
+    notImplemented: "ยังไม่ได้สร้างใน rag-v0",
+    buildNext: "สิ่งที่ต้องสร้างต่อ",
+    buildSteps: "1. ingest และ chunk corpus  2. ค้นคืน chunk ที่เกี่ยวข้อง  3. คืนคำตอบพร้อม citation หรือ safe response",
     grounded: "คำตอบจากหลักฐาน",
     ambiguous: "ต้องการคำถามที่ชัดเจนขึ้น",
     not_found: "ไม่มีหลักฐานในคลังนี้",
@@ -62,11 +68,13 @@ function Status({
 }) {
   const text = copy[language];
   const label =
-    result.status === "grounded"
-      ? text.grounded
-      : result.status === "ambiguous"
-        ? text.ambiguous
-        : text.not_found;
+    result.status === "not_implemented"
+      ? text.notImplemented
+      : result.status === "grounded"
+        ? text.grounded
+        : result.status === "ambiguous"
+          ? text.ambiguous
+          : text.not_found;
   return <span className={`status ${result.status}`}>{label}</span>;
 }
 
@@ -112,7 +120,7 @@ export default function Home() {
           <div><p className="eyebrow">{text.system}</p><strong>Approved documents</strong><span>chunk + metadata</span></div>
           <div><strong>Document store</strong><span>exact records + keywords</span></div>
           <div><strong>Vector index</strong><span>related meaning</span></div>
-          <div><strong>Bounded answer</strong><span>citation or refusal</span></div>
+          <div><strong>Grounded answer</strong><span>TODO: citation or safe response</span></div>
         </section>
         <form onSubmit={ask}>
           <label htmlFor="question">{text.example}</label>
@@ -138,6 +146,12 @@ export default function Home() {
           <article className="answer">
             <Status result={result} language={language} />
             <p>{result.answer}</p>
+            {result.status === "not_implemented" && (
+              <div className="implementation-steps">
+                <strong>{text.buildNext}</strong>
+                <span>{text.buildSteps}</span>
+              </div>
+            )}
             {result.citations.length > 0 && (
               <div className="citations">
                 <h2>{text.sources}</h2>

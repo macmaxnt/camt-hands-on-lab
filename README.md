@@ -8,7 +8,7 @@ Public learner materials for the AIAT x CAMT hands-on labs. The repository conta
 2. In the repository root, run `npm install` and `npm run dev`.
 3. Open `http://localhost:3000` to use the starter application in [starter/rag-v0](starter/rag-v0).
 
-The application uses only its approved local data, displays citations, and declines unsupported questions.
+`rag-v0` is intentionally incomplete: it shows the UI, source-metadata shape, and target response states, but does not retrieve documents or generate answers. Learners implement ingestion, chunking, retrieval, citations, and safe response behavior during the lab.
 
 ## Repository contents
 
