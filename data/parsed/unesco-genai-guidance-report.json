@@ -1,0 +1,16 @@
+{
+  "source_id": "unesco-genai-guidance-2023",
+  "title": "Guidance for generative AI in education and research",
+  "publisher": "UNESCO",
+  "year": 2023,
+  "source_url": "https://unesdoc.unesco.org/ark:/48223/pf0000386693",
+  "license": "CC BY-SA 3.0 IGO",
+  "attribution": "UNESCO. (2023). Guidance for generative AI in education and research.",
+  "source_file": "unesco-genai-guidance.pdf",
+  "total_pdf_pages": 48,
+  "text_pages": 46,
+  "chunk_count": 206,
+  "chunk_words": 180,
+  "overlap_words": 30,
+  "source_text_words": 27548
+}

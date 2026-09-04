@@ -1,0 +1,12 @@
+{
+  "name": "aiat-camt-rag-session-kit",
+  "private": true,
+  "workspaces": ["starter/rag-v0"],
+  "scripts": {
+    "test": "npm --workspace starter/rag-v0 test",
+    "build": "npm --workspace starter/rag-v0 run build",
+    "dev": "npm --workspace starter/rag-v0 run dev"
+  },
+  "engines": { "node": ">=20 <23" }
+}
+

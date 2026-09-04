@@ -1,0 +1,15 @@
+{
+  "dimensions": ["human", "privacy", "ethics", "pedagogy", "agency", "assessment", "safety", "foundations"],
+  "model": "offline-topic-vector-v1",
+  "note": "A deliberately small precomputed fallback index. The Colab notebook can replace it with multilingual-e5-small embeddings.",
+  "items": [
+    {"chunkId":"human-centred-01","documentId":"human-centred","vector":[1,0,0,1,1,0,1,0]},
+    {"chunkId":"data-privacy-01","documentId":"data-privacy","vector":[1,1,1,1,0,0,1,0]},
+    {"chunkId":"bias-validation-01","documentId":"bias-validation","vector":[1,0,1,0,0,1,1,0]},
+    {"chunkId":"pedagogical-validation-01","documentId":"pedagogical-validation","vector":[1,0,0,1,1,1,0,0]},
+    {"chunkId":"human-agency-01","documentId":"human-agency","vector":[1,0,0,1,1,0,1,0]},
+    {"chunkId":"co-design-01","documentId":"co-design","vector":[1,0,1,1,1,1,0,0]},
+    {"chunkId":"teacher-competencies-01","documentId":"teacher-competencies","vector":[1,1,1,1,1,1,1,1]},
+    {"chunkId":"student-competencies-01","documentId":"student-competencies","vector":[1,1,1,0,1,1,1,1]}
+  ]
+}
