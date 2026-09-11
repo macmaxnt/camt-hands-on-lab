@@ -1,15 +1,13 @@
-# AI System v0 — Lab 4 fast-start
+# Agent v3 — Lab 3 milestone
 
-This is the Lab 4 fast-start. It begins at the completed Lab 3 `agent-v3` milestone and adds one static page: `/system`, the AI system readiness backlog.
+This is the completed Lab 3 milestone. It continues the completed `secure-rag-v2` application with a bounded agent workflow. The agent searches authorized knowledge, creates one constrained draft, then waits for an authenticated staff decision. It never sends email, writes to a database, runs code, or takes an external action.
 
-The product works today: cited RAG chat, staff sessions, authorized retrieval, guardrails, poisoned-source quarantine, citation validation, privacy-minimised audits, and the bounded agent workspace with human approval. Lab 4 has not started. `/system` is a static backlog, not a release console. It has no evaluation runner, no feedback endpoint, no metrics, no deployment, and no release action.
-
-Start by inspecting the agent workspace at `/agent` and the backlog at `/system`.
+Every earlier control is intact: cited RAG chat, English/Thai interface, signed staff sessions, access-filtered retrieval, input guardrails, poisoned-source quarantine, citation validation, privacy-minimised audits, and the knowledge ledger.
 
 ## Setup
 
 ```bash
-cd starter/ai-system-v0
+cd milestones/agent-v3
 npm install
 cp .env.example .env.local
 npm run dev
@@ -27,15 +25,13 @@ Set these server-only variables in `.env.local` before asking the model for an a
 - `SECURE_RAG_MODEL_CACHE` — optional writable cache for local `Xenova/multilingual-e5-small` query embeddings
 - `SECURE_RAG_RUNTIME_DIR` — optional writable directory for the learner runtime database and copied PDFs
 
-Every provider key stays in the server environment. The browser never receives a key and cannot choose a provider. No public deployment is required for this course.
-
 Generate the staff-session values without storing a plaintext PIN:
 
 ```bash
 node -e 'const c=require("crypto"); const pin=process.argv[1]; if(!pin) throw new Error("Pass a PIN"); const N=16384,r=8,p=1,salt=c.randomBytes(16),hash=c.scryptSync(pin,salt,32,{N,r,p}),value=`scrypt$${N}$${r}$${p}$${salt.toString("base64url")}$${hash.toString("base64url")}`; console.log("SESSION_SECRET="+c.randomBytes(32).toString("base64url")); console.log("STAFF_PIN_SCRYPT_HASH="+value.replace(/\$/g,"\\$"))' 'choose-a-staff-pin'
 ```
 
-Verify the starter:
+Verify the milestone:
 
 ```bash
 npm test
@@ -43,40 +39,26 @@ npm run build
 npm run verify:secure-corpus
 ```
 
-## Routes in this starter
+## Bounded agent workflow
 
-| Route | State | Notes |
-| --- | --- | --- |
-| `/` | Working | Cited RAG chat with English/Thai text. |
-| `/knowledge` | Working | Authorized document ledger and source inspection. |
-| `/security` | Working | Staff-only, privacy-minimised audit review. |
-| `/agent` | Working | Bounded agent workspace: plan, evidence, draft, approval, trace. |
-| `/system` | Static | Lab 4 build backlog. No evaluation, feedback, or release behaviour. |
+- `lib/contracts.ts` holds the strict serializable records: `TaskState`, `ToolName`, `ToolCall`, `EvidenceRef`, `Draft`, `ApprovalDecision`, `TraceEvent`, `TaskSummary`, and `AgentWorkspace`.
+- `lib/agent.ts` holds the server-only coordinator, the strict request parsers, the tool allowlist, and the fixed `MAX_AGENT_STEPS` budget.
+- `app/api/agent/run/route.ts` and `app/api/agent/approve/route.ts` are the only agent routes. Both derive the role from the signed session cookie.
+- `app/agent/page.tsx` is the task workspace with plan, evidence, draft, approval, and trace panels.
 
-The API routes are `/api/session`, `/api/answer`, `/api/knowledge/*`, `/api/security/audit`, `/api/agent/run`, and `/api/agent/approve`. There is no `/api/feedback` route and no evaluation route.
+Exactly three server-owned tools exist:
 
-## The nine Lab 4 TODOs
+```text
+search_knowledge_base
+create_draft
+request_approval
+```
 
-1. Evaluation dataset and expected outcomes.
-2. Evaluation runner.
-3. Quality and evidence metrics: answer quality, citation support, safe stops, latency, error rate, and approximate cost.
-4. Privacy-minimised observability.
-5. Controlled feedback capture through a server-owned endpoint.
-6. Fallback and failure behaviour that separates provider or quota failures from safe refusals.
-7. Release criteria and a human release or no-release decision.
-8. Product onboarding, empty states, error states, and feedback affordance.
-9. Evidence bundle and final demo.
+The browser cannot select a tool, send tool arguments, set a state transition, or supply a role. Approval is staff-only, bound to one draft version, and accepted once. Stale and duplicate decisions are refused without a second result.
 
-`tests/lab4.todo.test.ts` lists the same target as skipped tests. Do not enable them until the matching capability exists.
+States: `planned`, `awaiting_approval`, `completed`, `declined`, `safely_stopped`.
 
-## Nothing in this starter pretends Lab 4 is done
-
-- No `POST /api/feedback` route and no feedback persistence.
-- No live evaluation runner, evaluation database, or generated dashboard metrics.
-- No telemetry or analytics vendor SDK and no provider monitoring integration.
-- No deployment configuration, Vercel action, public URL, or automatic release.
-- No browser-visible provider key and no client-controlled provider choice.
-- No fabricated passing scores, release recommendation, or evaluation history.
+Runtime task and trace rows store metadata only: state, fingerprint, counts, versions, decisions, and reason codes. Traces never store raw task text, draft text, evidence text, provider messages, or personal data.
 
 ## Seed bootstrap and reset
 
