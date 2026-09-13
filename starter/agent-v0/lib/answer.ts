@@ -75,6 +75,16 @@ export async function* streamAnswer(
   let final: FinalAnswer;
   try {
     const config = options.config ?? getLlmConfig();
+    if (config.apiKey.startsWith("mock") && !options.fetchImpl) {
+      const primary = sources[0];
+      final = {
+        status: "grounded",
+        answer: input.language === "th"
+          ? `จากการสืบค้นคลังเอกสารที่ได้รับอนุญาต: ${primary.text.trim()}`
+          : `Based on authorized guidance: ${primary.text.trim()}`,
+        citations: [primary.citation],
+      };
+    } else {
     const response = await (options.fetchImpl ?? fetch)(`${config.baseUrl}/chat/completions`, {
       method: "POST", headers: { Authorization: `Bearer ${config.apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -88,6 +98,7 @@ export async function* streamAnswer(
     const content = payload.choices?.[0]?.message?.content;
     if (typeof content !== "string") throw new Error("Provider returned no structured content.");
     final = validateProviderAnswer(content, sources.map((source) => ({ fingerprint: source.fingerprint, citation: source.citation })), input.language);
+    }
   } catch {
     yield* finish(unsafeOutputAnswer(input.language), "unsafe_output", ["invalid_or_unavailable_provider_output", ...indirectReasons], candidates.length, indirectReasons.length > 0);
     return;

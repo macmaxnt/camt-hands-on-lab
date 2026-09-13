@@ -4,7 +4,7 @@ import { bootstrapSeed, type RuntimePaths } from "./bootstrap";
 import { LocalE5QueryEmbeddingProvider, type QueryEmbeddingProvider } from "./embeddings";
 import { readCorpusManifest } from "./manifest";
 import { SeedCorpusStore } from "./store";
-import type { UserRole } from "../contracts";
+import type { TaskSummary, TraceEvent, UserRole } from "../contracts";
 import type { AuditRecord, SecurityRepository } from "../security";
 import type { CorpusManifest, DocumentDetail, DocumentSummary, RetrievedChunk } from "./types";
 
@@ -66,6 +66,10 @@ export class SeedCorpusService implements SecurityRepository {
   recordAudit(event: AuditRecord): void { this.store.recordAudit(event); }
 
   listAuditEvents(limit: number): AuditRecord[] { return this.store.listAuditEvents(limit); }
+
+  recordAgentTask(summary: TaskSummary): void { this.store.recordAgentTask(summary); }
+
+  recordAgentTrace(event: TraceEvent): void { this.store.recordAgentTrace(event); }
 
   private withManifest<T extends DocumentSummary>(document: T): T {
     const entry = this.manifest.sourceFiles.find((item) => item.id === document.id);

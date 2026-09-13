@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import * as sqliteVec from "sqlite-vec";
-import type { AccessLevel, UserRole } from "../contracts";
+import type { AccessLevel, TaskSummary, TraceEvent, UserRole } from "../contracts";
 import type { AuditRecord, SecurityRepository } from "../security";
 import type { DocumentChunk, DocumentDetail, DocumentSummary, RetrievedChunk } from "./types";
 
@@ -115,6 +115,34 @@ export class SeedCorpusStore implements SecurityRepository {
     }));
   }
 
+  recordAgentTask(summary: TaskSummary): void {
+    this.database.prepare(`
+      INSERT INTO agent_task_summaries (
+        task_id, created_at, updated_at, role, state, task_fingerprint, evidence_count,
+        draft_version, approval_json, reason_codes_json, step_count
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(task_id) DO UPDATE SET
+        updated_at = excluded.updated_at, state = excluded.state, evidence_count = excluded.evidence_count,
+        draft_version = excluded.draft_version, approval_json = excluded.approval_json,
+        reason_codes_json = excluded.reason_codes_json, step_count = excluded.step_count
+    `).run(
+      summary.taskId, summary.createdAt, summary.updatedAt, summary.role, summary.state, summary.taskFingerprint,
+      summary.evidenceCount, summary.draftVersion, JSON.stringify(summary.approval), JSON.stringify(summary.reasonCodes), summary.stepCount,
+    );
+  }
+
+  recordAgentTrace(event: TraceEvent): void {
+    this.database.prepare(`
+      INSERT INTO agent_trace_events (
+        id, task_id, created_at, from_state, to_state, tool, outcome, evidence_count,
+        draft_version, reason_code, step
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      event.id, event.taskId, event.createdAt, event.fromState, event.toState, event.tool, event.outcome,
+      event.evidenceCount, event.draftVersion, event.reasonCode, event.step,
+    );
+  }
+
   private ensureSecuritySchema() {
     this.database.exec(`
       CREATE TABLE IF NOT EXISTS security_chunk_flags (
@@ -141,6 +169,33 @@ export class SeedCorpusStore implements SecurityRepository {
         incident_found INTEGER NOT NULL CHECK(incident_found IN (0, 1))
       );
       CREATE INDEX IF NOT EXISTS audit_events_created_at_idx ON audit_events(created_at DESC);
+      CREATE TABLE IF NOT EXISTS agent_task_summaries (
+        task_id TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        role TEXT NOT NULL CHECK(role IN ('public', 'staff')),
+        state TEXT NOT NULL CHECK(state IN ('planned', 'awaiting_approval', 'completed', 'declined', 'safely_stopped')),
+        task_fingerprint TEXT NOT NULL,
+        evidence_count INTEGER NOT NULL,
+        draft_version INTEGER,
+        approval_json TEXT NOT NULL,
+        reason_codes_json TEXT NOT NULL,
+        step_count INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS agent_trace_events (
+        id TEXT PRIMARY KEY,
+        task_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        from_state TEXT,
+        to_state TEXT NOT NULL CHECK(to_state IN ('planned', 'awaiting_approval', 'completed', 'declined', 'safely_stopped')),
+        tool TEXT CHECK(tool IN ('search_knowledge_base', 'create_draft', 'request_approval')),
+        outcome TEXT NOT NULL CHECK(outcome IN ('ok', 'stopped', 'declined')),
+        evidence_count INTEGER NOT NULL,
+        draft_version INTEGER,
+        reason_code TEXT,
+        step INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS agent_trace_events_task_id_idx ON agent_trace_events(task_id, created_at);
     `);
   }
 }

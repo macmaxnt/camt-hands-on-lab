@@ -100,3 +100,95 @@ export interface AgentWorkspace {
   trace: TraceEvent[];
   result: string | null;
 }
+
+export type EvaluationSurface = "answer" | "agent";
+
+export type ExpectedOutcome =
+  | "grounded"
+  | "ambiguous"
+  | "not_found"
+  | "refused"
+  | "safely_stopped"
+  | "awaiting_approval"
+  | "provider_unavailable";
+
+export type ErrorCategory =
+  | "none"
+  | "unsafe_input"
+  | "no_evidence"
+  | "poisoned_source"
+  | "malformed_output"
+  | "rate_limited"
+  | "provider_outage";
+
+export interface EvaluationCase {
+  caseId: string;
+  setVersion: string;
+  surface: EvaluationSurface;
+  roleCategory: UserRole;
+  requestId: string;
+  evidenceIds: string[];
+  expectedOutcome: ExpectedOutcome;
+  expectedCitationSupport: boolean;
+  expectedSafeStop: boolean;
+  expectedAccessResult: boolean;
+  releaseBlocking: boolean;
+}
+
+export interface CaseResult {
+  caseId: string;
+  setVersion: string;
+  surface: EvaluationSurface;
+  passed: boolean;
+  actualOutcome: ExpectedOutcome;
+  citationSupport: boolean;
+  safeStop: boolean;
+  accessResult: boolean;
+  citationFingerprints: string[];
+  latencyMs: number;
+  errorCategory: ErrorCategory;
+  retryCount: number;
+  tokenStatus: "available" | "unavailable";
+  inputTokens: number | null;
+  outputTokens: number | null;
+  costStatus: "available" | "unavailable";
+  approximateCostUsd: number | null;
+  releaseImpact: "blocking" | "informational";
+  blockingFindings: string[];
+}
+
+export interface ReleaseGate {
+  requiredCases: number;
+  passedCases: number;
+  technicalPass: boolean;
+  blockingReasons: string[];
+  humanReviewer: string | null;
+  decision: "release" | "no_release" | "pending";
+  limitation: string;
+  evaluatedAt: string;
+}
+
+export interface ReleaseDecisionRecord {
+  id: string;
+  runId: string;
+  decision: "release" | "no_release";
+  reviewerName: string;
+  honestLimitation: string;
+  createdAt: string;
+}
+
+export interface FeedbackPayload {
+  rating: number;
+  category: "accuracy" | "citation" | "safety" | "general";
+  note?: string;
+  traceId?: string;
+}
+
+export interface FeedbackRecord {
+  id: string;
+  createdAt: string;
+  rating: number;
+  category: string;
+  sanitizedNote: string;
+  traceFingerprint: string | null;
+}

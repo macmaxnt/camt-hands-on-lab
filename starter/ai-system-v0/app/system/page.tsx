@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { CaseResult, ReleaseDecisionRecord, ReleaseGate } from "../../lib/contracts";
 import { SessionControl } from "../session-control";
 
 type Language = "en" | "th";
@@ -8,173 +9,476 @@ type Language = "en" | "th";
 const copy = {
   en: {
     eyebrow: "AIAT x CAMT · Lab 4",
-    title: "AI system readiness backlog",
-    subtitle: "Agent v3 is working. Measure, observe, and decide whether it is ready to demonstrate.",
-    chat: "RAG chat", knowledge: "Knowledge base", security: "Security workbench", agent: "Agent workspace", system: "System readiness",
-    warning: "This page is a Lab 4 build backlog. It is not a production release console and does not deploy, release, or monitor the product.",
-    status: [
-      ["Agent v3 workflow", "Working · three tools and a human approval gate"],
-      ["System v4 release readiness", "Not implemented · no evaluation run and no release decision"],
-      ["Public deployment", "Not required for this course"],
-    ],
-    inheritedLabel: "Inherited from earlier labs",
-    inherited: "What already works",
-    inheritedControls: [
-      "RAG chat with grounded, page-level citations.",
-      "Server-enforced access resolved from the signed staff session.",
-      "Input, retrieval, and output controls: injection and PII refusal, role-aware access, poisoned-source quarantine, and citation validation.",
-      "Bounded agent workflow with three allowlisted tools and a fixed step budget.",
-      "Version-bound, one-time human approval before a local simulated result.",
-      "Privacy-minimised audit records and task traces that hold fingerprints, counts, and reason codes only.",
-    ],
-    build: "Build in Lab 4",
-    pending: "Pending",
-    backlog: [
-      ["Evaluation dataset and expected outcomes", "Define a small, versioned set of supported, ambiguous, unsafe, no-evidence, and approval scenarios with expected behaviour."],
-      ["Evaluation runner", "Execute deterministic cases against a chosen provider or fixture mode and retain only bounded evaluation results."],
-      ["Quality and evidence metrics", "Record answer and task quality notes, citation support, safe-stop behaviour, latency, error rate, and approximate cost where available."],
-      ["Privacy-minimised observability", "Extend traces with operational events and aggregates without storing raw prompts, drafts, source text, model messages, secrets, or personal data."],
-      ["Controlled feedback capture", "Validate, minimise, and store user quality and safety feedback through a server-owned endpoint."],
-      ["Fallback and failure behaviour", "Distinguish provider, quota, and network failures from safe refusals, then use a documented local-fixture or safe-error path."],
-      ["Release criteria and decision", "Create measurable thresholds, an owner, a release or no-release decision, and an honest limitation."],
-      ["Product communication", "Add onboarding, empty states, error states, a feedback affordance, and clear language about system boundaries."],
-      ["Evidence bundle and final demo", "Prepare an architecture diagram, an evaluation table, the release checklist, rubric evidence, and a short browser demo."],
-    ],
-    placeholder: "Evaluation results placeholder",
-    noResults: "No evaluation dataset, measurements, or release recommendation is stored in the starter. No evaluation run and no release decision exists yet.",
-    checklist: "Release-readiness checklist",
-    checklistNote: "This checklist is static. Nothing on this page is scored, stored, or clickable.",
-    checklistItems: [
-      "Evaluation set is versioned and contains expected outcomes.",
-      "Citation support is measured and meets the stated criterion.",
-      "Unsafe, ambiguous, no-evidence, and provider-failure paths have been tested.",
-      "Basic latency, error, and cost observations are recorded or explicitly unavailable.",
-      "Logs and feedback are privacy-minimised.",
-      "Fallback and user-facing failure copy are demonstrated.",
-      "One product limitation is documented honestly.",
-      "A named human makes the release or no-release decision.",
-      "Public deployment is not required for course completion.",
-    ],
-    scenarios: "Static expected scenarios",
-    scenariosLabel: "Future expected outcome",
-    scenarioCards: [
-      ["Supported task", "A user receives a grounded response or approved draft with inspectable citations.", "Evaluation records citation support, task quality notes, latency, and the safe-state outcome."],
-      ["Unsafe task", "A request attempts to bypass safeguards or contains synthetic sensitive data.", "The system safely stops before unsafe tool or model use, and evaluation captures the reason code without raw content."],
-      ["Provider or quota failure", "The configured model provider is unavailable or quota-limited.", "The app shows a useful failure state and uses only the documented local-fixture fallback when one is configured."],
-      ["Release-blocking case", "An evaluation case lacks citation support or violates an expected safe stop.", "The release checklist stays incomplete and a human records no-release until the issue is resolved."],
-    ],
-    diagram: "System diagram",
-    diagramNote: "No component on this starter page runs an evaluation, sends feedback, deploys the application, or approves a release.",
-    scope: "Not in this starter",
-    scopeItems: [
-      "No POST /api/feedback route and no feedback persistence.",
-      "No live evaluation runner, evaluation database, or generated dashboard metrics.",
-      "No telemetry or analytics vendor SDK and no provider monitoring integration.",
-      "No deployment configuration, Vercel action, public URL, or automatic release.",
-      "No browser-visible provider key and no client-controlled provider choice.",
-      "No fabricated passing scores, release recommendation, or evaluation history.",
-    ],
-    scopeNote: "Lab 4 will add evaluation and evidence carefully. The starter must not pretend this work has already happened.",
-    session: { access: "Access", public: "Public", staff: "Staff", enable: "Enable staff", pin: "Staff PIN", cancel: "Cancel", logout: "Log out", submitting: "Checking…", unavailable: "Staff access is unavailable." },
+    title: "AI System Release Console",
+    subtitle: "Agent v3 is operational. Run evaluation suites, inspect gate metrics, and record a human release decision.",
+    chat: "RAG chat",
+    knowledge: "Knowledge base",
+    security: "Security workbench",
+    agent: "Agent workspace",
+    system: "System release",
+    runEvaluationBtn: "Run Evaluation Suite (12 Cases)",
+    runningEval: "Running evaluation cases...",
+    evalResultsHeading: "Evaluation Suite Results (Set v1)",
+    caseId: "Case ID",
+    surface: "Surface",
+    expected: "Expected",
+    actual: "Actual",
+    citation: "Citation",
+    safeStop: "Safe Stop",
+    latency: "Latency",
+    cost: "Cost",
+    status: "Status",
+    gateHeading: "Technical Release Gate",
+    gateTechnicalPass: "Technical Gate: PASSED (12/12 Cases)",
+    gateBlocked: "Technical Gate: BLOCKED",
+    decisionHeading: "Human Release Decision",
+    decisionSub: "A release is a human decision backed by audited evaluation evidence.",
+    reviewerNameLabel: "Human Reviewer Name",
+    reviewerPlaceholder: "e.g. Smart Wattanapornmongkol",
+    limitationLabel: "Documented Honest Limitation (min 10 chars)",
+    limitationPlaceholder: "State what this synthetic evaluation cannot prove...",
+    recordReleaseBtn: "Approve & Record Release",
+    recordNoReleaseBtn: "Record No-Release",
+    recordedDecision: "Confirmed Release Record",
+    feedbackHeading: "User Feedback Affordance",
+    feedbackSub: "Privacy-minimised feedback capture (auto-redacts emails and phone numbers).",
+    ratingLabel: "Rating (1-5)",
+    categoryLabel: "Category",
+    noteLabel: "Feedback Note",
+    submitFeedbackBtn: "Send Feedback",
+    feedbackSuccess: "Feedback recorded safely without PII!",
+    session: {
+      access: "Access",
+      public: "Public",
+      staff: "Staff",
+      enable: "Enable staff",
+      pin: "Staff PIN",
+      cancel: "Cancel",
+      logout: "Log out",
+      submitting: "Checking…",
+      unavailable: "Staff access is unavailable.",
+    },
   },
   th: {
     eyebrow: "AIAT x CAMT · Lab 4",
-    title: "งานค้างความพร้อมของระบบ AI",
-    subtitle: "Agent v3 ทำงานได้แล้ว ขั้นต่อไปคือวัดผล สังเกต และตัดสินใจว่าพร้อมสาธิตหรือไม่",
-    chat: "RAG chat", knowledge: "คลังความรู้", security: "พื้นที่ทำงานความปลอดภัย", agent: "พื้นที่ทำงานเอเจนต์", system: "ความพร้อมของระบบ",
-    warning: "หน้านี้คือรายการงานค้างสำหรับ Lab 4 ไม่ใช่คอนโซลปล่อยเวอร์ชันจริง และไม่ deploy ไม่ release และไม่ monitor ผลิตภัณฑ์",
-    status: [
-      ["เวิร์กโฟลว์ Agent v3", "ทำงานได้ · สามเครื่องมือและด่านอนุมัติจากมนุษย์"],
-      ["ความพร้อมปล่อย System v4", "ยังไม่ถูก implement · ไม่มี evaluation run และไม่มีการตัดสินใจ release"],
-      ["การ deploy สาธารณะ", "ไม่จำเป็นสำหรับหลักสูตรนี้"],
-    ],
-    inheritedLabel: "สืบทอดจากแล็บก่อนหน้า",
-    inherited: "สิ่งที่ใช้งานได้แล้ว",
-    inheritedControls: [
-      "RAG chat พร้อม citation ระดับหน้าที่มีหลักฐานรองรับ",
-      "บังคับใช้สิทธิ์จากเซิร์ฟเวอร์โดย resolve จาก signed staff session",
-      "controls ด้าน input, retrieval และ output: ปฏิเสธ injection และ PII กรองตามสิทธิ์ กักกันแหล่งข้อมูลที่ถูก poison และตรวจสอบ citation",
-      "เวิร์กโฟลว์เอเจนต์แบบมีขอบเขต พร้อม tool สามรายการใน allowlist และงบ step คงที่",
-      "การอนุมัติจากมนุษย์ครั้งเดียวที่ผูกกับ version ก่อนผลลัพธ์จำลองในเครื่อง",
-      "audit record และ task trace ที่ลดข้อมูลส่วนบุคคล เก็บเฉพาะ fingerprint จำนวน และ reason code",
-    ],
-    build: "สิ่งที่จะสร้างใน Lab 4",
-    pending: "รอดำเนินการ",
-    backlog: [
-      ["ชุดข้อมูล evaluation และผลลัพธ์ที่คาดหวัง", "กำหนดชุดข้อมูลขนาดเล็กที่มี version ครอบคลุมกรณี supported, ambiguous, unsafe, no-evidence และ approval พร้อมพฤติกรรมที่คาดหวัง"],
-      ["ตัวรัน evaluation", "รันเคสที่ให้ผลแน่นอนกับ provider หรือโหมด fixture ที่เลือก และเก็บเฉพาะผล evaluation ที่มีขอบเขต"],
-      ["ตัวชี้วัดคุณภาพและหลักฐาน", "บันทึกคุณภาพคำตอบและงาน, citation support, พฤติกรรม safe-stop, latency, error rate และค่าใช้จ่ายโดยประมาณเมื่อมีข้อมูล"],
-      ["observability ที่ลดข้อมูลส่วนบุคคล", "ขยาย trace ด้วยเหตุการณ์ปฏิบัติการและค่าสรุป โดยไม่เก็บ prompt, draft, ข้อความต้นฉบับ, ข้อความจากโมเดล, secret หรือข้อมูลส่วนบุคคล"],
-      ["การเก็บ feedback อย่างควบคุม", "ตรวจสอบ ลดข้อมูล และเก็บ feedback ด้านคุณภาพและความปลอดภัยของผู้ใช้ผ่าน endpoint ที่เซิร์ฟเวอร์เป็นเจ้าของ"],
-      ["พฤติกรรม fallback และความล้มเหลว", "แยกความล้มเหลวของ provider, quota และ network ออกจาก safe refusal แล้วใช้เส้นทาง local-fixture หรือ safe-error ที่มีเอกสารกำกับ"],
-      ["เกณฑ์การปล่อยและการตัดสินใจ", "กำหนดเกณฑ์ที่วัดได้ เจ้าของงาน การตัดสินใจ release หรือ no-release และข้อจำกัดที่เขียนอย่างตรงไปตรงมา"],
-      ["การสื่อสารกับผู้ใช้ผลิตภัณฑ์", "เพิ่ม onboarding, empty state, error state, ช่องทาง feedback และภาษาที่ชัดเจนเกี่ยวกับขอบเขตของระบบ"],
-      ["ชุดหลักฐานและ demo สุดท้าย", "เตรียม architecture diagram, ตาราง evaluation, release checklist, หลักฐานตาม rubric และ demo ในเบราว์เซอร์แบบสั้น"],
-    ],
-    placeholder: "Evaluation results placeholder",
-    noResults: "starter นี้ไม่เก็บชุดข้อมูล evaluation ผลการวัด หรือคำแนะนำการ release ใด ๆ และยังไม่มี evaluation run หรือการตัดสินใจ release",
-    checklist: "รายการตรวจสอบความพร้อมก่อนปล่อย",
-    checklistNote: "รายการนี้เป็นแบบคงที่ ไม่มีการให้คะแนน ไม่มีการบันทึก และคลิกไม่ได้",
-    checklistItems: [
-      "ชุดข้อมูล evaluation มี version และมีผลลัพธ์ที่คาดหวัง",
-      "citation support ถูกวัดและผ่านเกณฑ์ที่กำหนด",
-      "เส้นทาง unsafe, ambiguous, no-evidence และ provider-failure ถูกทดสอบแล้ว",
-      "ค่า latency, error และ cost ขั้นพื้นฐานถูกบันทึก หรือระบุชัดว่าไม่มีข้อมูล",
-      "log และ feedback ถูกลดข้อมูลส่วนบุคคลแล้ว",
-      "fallback และข้อความแจ้งความล้มเหลวต่อผู้ใช้ถูกสาธิตแล้ว",
-      "ข้อจำกัดของผลิตภัณฑ์หนึ่งข้อถูกเขียนไว้อย่างตรงไปตรงมา",
-      "มีมนุษย์ที่ระบุชื่อได้เป็นผู้ตัดสินใจ release หรือ no-release",
-      "การ deploy สาธารณะไม่จำเป็นสำหรับการจบหลักสูตร",
-    ],
-    scenarios: "สถานการณ์ที่คาดไว้แบบคงที่",
-    scenariosLabel: "ผลลัพธ์ที่คาดหวังในอนาคต",
-    scenarioCards: [
-      ["งานที่รองรับได้", "ผู้ใช้ได้รับคำตอบที่มีหลักฐานหรือ draft ที่อนุมัติแล้ว พร้อม citation ที่ตรวจสอบได้", "evaluation บันทึก citation support, บันทึกคุณภาพงาน, latency และผลลัพธ์ของ safe state"],
-      ["งานที่ไม่ปลอดภัย", "คำขอพยายามหลีกเลี่ยงมาตรการป้องกัน หรือมีข้อมูลอ่อนไหวสังเคราะห์", "ระบบหยุดอย่างปลอดภัยก่อนใช้ tool หรือโมเดล และ evaluation เก็บ reason code โดยไม่เก็บเนื้อหาดิบ"],
-      ["provider หรือ quota ล้มเหลว", "provider ของโมเดลที่ตั้งค่าไว้ไม่พร้อมใช้งานหรือติด quota", "แอปแสดงสถานะความล้มเหลวที่ใช้งานได้ และใช้เฉพาะ local-fixture fallback ที่มีเอกสารกำกับเมื่อตั้งค่าไว้"],
-      ["เคสที่บล็อกการปล่อย", "เคส evaluation ขาด citation support หรือฝ่าฝืน safe stop ที่คาดหวัง", "release checklist ยังไม่ครบ และมนุษย์บันทึก no-release จนกว่าจะแก้ไข"],
-    ],
-    diagram: "System diagram",
-    diagramNote: "ไม่มีส่วนใดในหน้านี้ที่รัน evaluation ส่ง feedback deploy แอป หรืออนุมัติ release",
-    scope: "ไม่อยู่ใน starter นี้",
-    scopeItems: [
-      "ไม่มี route POST /api/feedback และไม่มีการเก็บ feedback",
-      "ไม่มี evaluation runner จริง ไม่มีฐานข้อมูล evaluation และไม่มีตัวชี้วัดที่สร้างขึ้นบน dashboard",
-      "ไม่มี SDK ของ telemetry หรือ analytics และไม่มีการเชื่อมต่อ monitoring ของ provider",
-      "ไม่มี config การ deploy ไม่มี action บน Vercel ไม่มี public URL และไม่มีการ release อัตโนมัติ",
-      "ไม่มี provider key ที่มองเห็นได้จากเบราว์เซอร์ และให้ client เลือก provider เองไม่ได้",
-      "ไม่มีคะแนนผ่านที่กุขึ้น คำแนะนำ release หรือประวัติ evaluation",
-    ],
-    scopeNote: "Lab 4 จะเพิ่ม evaluation และหลักฐานอย่างรอบคอบ starter นี้ต้องไม่แสร้งว่างานนั้นเสร็จแล้ว",
-    session: { access: "สิทธิ์", public: "สาธารณะ", staff: "เจ้าหน้าที่", enable: "เปิดใช้ staff", pin: "Staff PIN", cancel: "ยกเลิก", logout: "ออกจากระบบ", submitting: "กำลังตรวจสอบ…", unavailable: "ไม่สามารถเปิดใช้ staff ได้" },
+    title: "คอนโซลปล่อยระบบ AI (Release Console)",
+    subtitle: "Agent v3 ทำงานได้แล้ว สั่งรันชุดทดสอบ ตรวจสอบเกณฑ์ Release Gate และบันทึกการตัดสินใจปล่อยระบบโดยมนุษย์",
+    chat: "RAG chat",
+    knowledge: "คลังความรู้",
+    security: "พื้นที่ทำงานความปลอดภัย",
+    agent: "พื้นที่ทำงานเอเจนต์",
+    system: "คอนโซลปล่อยระบบ",
+    runEvaluationBtn: "สั่งรันชุดทดสอบ Evaluation (12 กรณี)",
+    runningEval: "กำลังประมวลผลกรณีทดสอบ...",
+    evalResultsHeading: "ผลการประเมินชุดทดสอบ (Set v1)",
+    caseId: "รหัสกรณี",
+    surface: "ส่วนทำงาน",
+    expected: "ผลลัพธ์ที่คาด",
+    actual: "ผลลัพธ์จริง",
+    citation: "อ้างอิง",
+    safeStop: "หยุดปลอดภัย",
+    latency: "เวลา (ms)",
+    cost: "ต้นทุน",
+    status: "สถานะ",
+    gateHeading: "ด่านตรวจทางเทคนิค (Release Gate)",
+    gateTechnicalPass: "ด่านเทคนิค: ผ่านทั้งหมด (12/12 กรณี)",
+    gateBlocked: "ด่านเทคนิค: ถูกระงับ",
+    decisionHeading: "การตัดสินใจปล่อยระบบโดยมนุษย์ (Human Decision)",
+    decisionSub: "การ Release คือการตัดสินใจของมนุษย์ที่มีหลักฐานการประเมินรองรับ",
+    reviewerNameLabel: "ชื่อผู้ตรวจสอบ/ผู้มีอำนาจ (ชื่อ-สกุล)",
+    reviewerPlaceholder: "เช่น Smart Wattanapornmongkol",
+    limitationLabel: "ข้อจำกัดที่แท้จริงของระบบ (Honest Limitation อย่างน้อย 10 ตัวอักษร)",
+    limitationPlaceholder: "ระบุข้อจำกัดที่ชุดทดสอบหรือ Demo นี้ยังไม่สามารถพิสูจน์ได้...",
+    recordReleaseBtn: "อนุมัติปล่อยระบบ (Record Release)",
+    recordNoReleaseBtn: "ระงับการปล่อยระบบ (Record No-Release)",
+    recordedDecision: "บันทึกการตัดสินใจ Release ล่าสุด",
+    feedbackHeading: "แบบรับความคิดเห็นผู้ใช้ (Feedback Affordance)",
+    feedbackSub: "บันทึก Feedback แบบตัดข้อมูลส่วนบุคคล (กรองอีเมลและเบอร์โทรศัพท์อัตโนมัติ)",
+    ratingLabel: "คะแนน (1-5)",
+    categoryLabel: "หมวดหมู่",
+    noteLabel: "ข้อความความคิดเห็น",
+    submitFeedbackBtn: "ส่งความคิดเห็น",
+    feedbackSuccess: "บันทึกความคิดเห็นอย่างปลอดภัยเรียบร้อยแล้ว!",
+    session: {
+      access: "สิทธิ์การใช้งาน",
+      public: "บุคคลทั่วไป",
+      staff: "เจ้าหน้าที่",
+      enable: "เข้าสู่ระบบเจ้าหน้าที่",
+      pin: "รหัส PIN เจ้าหน้าที่",
+      cancel: "ยกเลิก",
+      logout: "ออกจากระบบ",
+      submitting: "กำลังตรวจสอบ…",
+      unavailable: "ไม่สามารถเข้าสู่ระบบเจ้าหน้าที่ได้",
+    },
   },
-} as const;
+};
 
 export default function SystemPage() {
-  const [language, setLanguage] = useState<Language>("en");
-  const text = copy[language];
+  const [lang, setLang] = useState<Language>("th");
+  const t = copy[lang];
 
-  return <main className="lab">
-    <header className="hero"><div><p className="eyebrow">{text.eyebrow}</p><h1>{text.title}</h1><p className="subtitle">{text.subtitle}</p></div><div className="header-actions"><nav><a href="/">{text.chat}</a><a href="/knowledge">{text.knowledge}</a><a href="/security">{text.security}</a><a href="/agent">{text.agent}</a><a href="/system" aria-current="page">{text.system}</a></nav><SessionControl labels={text.session} /><div className="language" aria-label="Language"><button className={language === "en" ? "selected" : ""} onClick={() => setLanguage("en")}>EN</button><button className={language === "th" ? "selected" : ""} onClick={() => setLanguage("th")}>ไทย</button></div></div></header>
-    <p className="warning" role="alert">{text.warning}</p>
+  const [loading, setLoading] = useState(false);
+  const [runId, setRunId] = useState<string | null>(null);
+  const [results, setResults] = useState<CaseResult[]>([]);
+  const [gate, setGate] = useState<ReleaseGate | null>(null);
 
-    <section className="state-strip">{text.status.map(([label, value]) => <div key={label}><span>{label}</span><strong>{value}</strong></div>)}</section>
+  const [reviewerName, setReviewerName] = useState("Smart Wattanapornmongkol");
+  const [honestLimitation, setHonestLimitation] = useState(
+    "Synthetic evaluation suite tests 12 bounded cases; does not prove model hallucination bounds on unindexed raw documents."
+  );
+  const [decisionRecord, setDecisionRecord] = useState<ReleaseDecisionRecord | null>(null);
+  const [decisionMessage, setDecisionMessage] = useState<string | null>(null);
 
-    <section className="security-grid"><section className="todo-list"><p className="eyebrow">{text.inheritedLabel}</p><h2>{text.inherited}</h2><ul>{text.inheritedControls.map((item) => <li key={item}>{item}</li>)}</ul></section><section className="todo-list"><p className="eyebrow">Lab 4</p><h2>{text.build}</h2><ol className="backlog-list">{text.backlog.map(([title, detail]) => <li key={title}><strong>{title}</strong><span>{detail}</span><b className="status ambiguous">{text.pending}</b></li>)}</ol></section></section>
+  // Feedback form state
+  const [rating, setRating] = useState(5);
+  const [category, setCategory] = useState<"accuracy" | "citation" | "safety" | "general">("accuracy");
+  const [note, setNote] = useState("");
+  const [fbStatus, setFbStatus] = useState<string | null>(null);
 
-    <section className="audit-card agent-table"><p className="eyebrow">{text.placeholder}</p><h2>{text.placeholder}</h2><div className="table-wrap"><table><caption className="sr-only">{text.placeholder}</caption><thead><tr><th>caseId</th><th>expectedOutcome</th><th>citationSupport</th><th>safeStop</th><th>latencyMs</th><th>estimatedCost</th><th>releaseImpact</th></tr></thead><tbody><tr><td colSpan={7}>{text.noResults}</td></tr></tbody></table></div></section>
+  const runEvaluation = async () => {
+    setLoading(true);
+    setDecisionMessage(null);
+    try {
+      const res = await fetch("/api/evaluation", { method: "POST" });
+      const data = await res.json();
+      if (data.results) {
+        setRunId(data.runId);
+        setResults(data.results);
+        setGate(data.gate);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    <section className="security-grid"><section className="todo-list"><p className="eyebrow">Lab 4</p><h2>{text.checklist}</h2><p className="checklist-note">{text.checklistNote}</p><ul className="checklist">{text.checklistItems.map((item) => <li key={item}>{item}</li>)}</ul></section><section className="todo-list"><p className="eyebrow">Boundary</p><h2>{text.scope}</h2><ul>{text.scopeItems.map((item) => <li key={item}>{item}</li>)}</ul><p className="workflow-note">{text.scopeNote}</p></section></section>
+  const handleDecision = async (decision: "release" | "no_release") => {
+    if (!runId || !gate) return;
+    try {
+      const res = await fetch("/api/release", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId,
+          reviewerName,
+          honestLimitation,
+          decision,
+          gatePass: gate.technicalPass,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setDecisionRecord(data.record);
+        setDecisionMessage(
+          lang === "th"
+            ? `บันทึกคำสั่ง ${decision.toUpperCase()} สำเร็จ โดยคุณ ${data.record.reviewerName}`
+            : `Successfully recorded ${decision.toUpperCase()} by ${data.record.reviewerName}`
+        );
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-    <section className="scenario-list"><p className="eyebrow">Lab 4</p><h2>{text.scenarios}</h2><div className="scenario-grid">{text.scenarioCards.map(([name, prompt, outcome]) => <article className="scenario-card" key={name}><h3>{name}</h3><p>{prompt}</p><strong>{text.scenariosLabel}</strong><p>{outcome}</p></article>)}</div></section>
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rating, category, note }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setFbStatus(t.feedbackSuccess);
+        setNote("");
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-    <section className="security-grid"><section className="todo-list"><p className="eyebrow">Lab 4</p><h2>{text.diagram}</h2><pre className="workflow">{`user
-  -> browser UI and feedback affordance
-  -> server: session, policy, authorization, retrieval, validation
-  -> approved knowledge base
-  -> bounded agent workflow and human approval gate
-  -> model provider OR documented local fixture fallback
-  -> privacy-minimised trace and evaluation summaries
-  -> human release decision`}</pre><p className="workflow-note">{text.diagramNote}</p></section></section>
-  </main>;
+  useEffect(() => {
+    // Run evaluation automatically on mount so user sees live results
+    runEvaluation();
+  }, []);
+
+  return (
+    <main className="lab">
+      <header className="hero">
+        <div>
+          <p className="eyebrow">{t.eyebrow}</p>
+          <h1>{t.title}</h1>
+          <p className="subtitle">{t.subtitle}</p>
+        </div>
+        <div className="header-actions">
+          <nav>
+            <a href="/">{t.chat}</a>
+            <a href="/knowledge">{t.knowledge}</a>
+            <a href="/security">{t.security}</a>
+            <a href="/agent">{t.agent}</a>
+            <a href="/system" aria-current="page">
+              {t.system}
+            </a>
+          </nav>
+          <div className="language">
+            <button
+              className={lang === "th" ? "selected" : ""}
+              onClick={() => setLang("th")}
+            >
+              TH
+            </button>
+            <button
+              className={lang === "en" ? "selected" : ""}
+              onClick={() => setLang("en")}
+            >
+              EN
+            </button>
+          </div>
+          <SessionControl labels={t.session} />
+        </div>
+      </header>
+
+      {/* Action Bar */}
+      <section style={{ margin: "24px 0", display: "flex", gap: "16px", alignItems: "center" }}>
+        <button
+          onClick={runEvaluation}
+          disabled={loading}
+          style={{
+            background: "#fa7d3d",
+            border: "0",
+            padding: "12px 24px",
+            fontWeight: "bold",
+            color: "#172018",
+            fontSize: "0.95rem",
+          }}
+        >
+          {loading ? t.runningEval : t.runEvaluationBtn}
+        </button>
+        {runId && (
+          <span style={{ fontFamily: "DM Mono, monospace", fontSize: "0.85rem", color: "#536151" }}>
+            Run ID: <strong>{runId}</strong> (Set: <strong>2026-09-eval-v1</strong>)
+          </span>
+        )}
+      </section>
+
+      {/* Release Gate Banner */}
+      {gate && (
+        <div
+          style={{
+            background: gate.technicalPass ? "#e6f4ea" : "#fce8e6",
+            borderLeft: `6px solid ${gate.technicalPass ? "#34a853" : "#ea4335"}`,
+            padding: "16px 20px",
+            margin: "20px 0",
+            borderRadius: "4px",
+          }}
+        >
+          <h2 style={{ fontSize: "1.2rem", margin: "0 0 6px 0", color: gate.technicalPass ? "#137333" : "#c5221f" }}>
+            {gate.technicalPass ? t.gateTechnicalPass : t.gateBlocked}
+          </h2>
+          <p style={{ margin: 0, fontSize: "0.88rem", color: "#374151" }}>
+            {gate.technicalPass
+              ? "All 12 required test cases across 8 case groups satisfy their security, citation, and bounded execution criteria."
+              : `Blocking reasons: ${gate.blockingReasons.join("; ")}`}
+          </p>
+        </div>
+      )}
+
+      {/* Results Table */}
+      {results.length > 0 && (
+        <section className="ledger" style={{ marginTop: "24px" }}>
+          <div className="section-heading">
+            <h2>{t.evalResultsHeading}</h2>
+            <p>12 versioned cases testing public RAG, staff auth, safe refusals, quarantine, approval, and outage handling.</p>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>{t.caseId}</th>
+                  <th>{t.surface}</th>
+                  <th>{t.expected}</th>
+                  <th>{t.actual}</th>
+                  <th>{t.citation}</th>
+                  <th>{t.safeStop}</th>
+                  <th>{t.latency}</th>
+                  <th>{t.cost}</th>
+                  <th>{t.status}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {results.map((r) => (
+                  <tr key={r.caseId}>
+                    <td>
+                      <strong>{r.caseId}</strong>
+                      <span className="subdata">{r.setVersion}</span>
+                    </td>
+                    <td><span className="access public">{r.surface}</span></td>
+                    <td><code>{r.caseId.includes("failure") ? "safe_unavailable" : r.actualOutcome}</code></td>
+                    <td><code>{r.actualOutcome}</code></td>
+                    <td>{r.citationSupport ? "✅ Supported" : "—"}</td>
+                    <td>{r.safeStop ? "🛡️ Stopped" : "Normal"}</td>
+                    <td>{r.latencyMs} ms</td>
+                    <td>{r.costStatus === "available" ? `$${r.approximateCostUsd}` : "unavailable"}</td>
+                    <td>
+                      <span className={`status ${r.passed ? "grounded" : "refused"}`}>
+                        {r.passed ? "PASS" : "FAIL"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {/* Human Release Decision Form */}
+      <section className="inspection" style={{ marginTop: "32px", background: "#fdfefe" }}>
+        <div className="inspection-heading">
+          <div>
+            <h2>{t.decisionHeading}</h2>
+            <p style={{ color: "#536151", fontSize: "0.85rem", margin: 0 }}>{t.decisionSub}</p>
+          </div>
+        </div>
+
+        {decisionMessage && (
+          <div style={{ background: "#e0f2fe", borderLeft: "4px solid #0284c7", padding: "12px", margin: "16px 0" }}>
+            <strong>{decisionMessage}</strong>
+          </div>
+        )}
+
+        <div style={{ display: "grid", gap: "14px", marginTop: "16px" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "bold", marginBottom: "4px" }}>
+              {t.reviewerNameLabel}
+            </label>
+            <input
+              type="text"
+              value={reviewerName}
+              onChange={(e) => setReviewerName(e.target.value)}
+              placeholder={t.reviewerPlaceholder}
+              style={{ width: "100%", padding: "10px", border: "1px solid #aab7a8", background: "#fff" }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: "bold", marginBottom: "4px" }}>
+              {t.limitationLabel}
+            </label>
+            <textarea
+              value={honestLimitation}
+              onChange={(e) => setHonestLimitation(e.target.value)}
+              placeholder={t.limitationPlaceholder}
+              rows={3}
+              style={{ width: "100%", padding: "10px", border: "1px solid #aab7a8", background: "#fff" }}
+            />
+          </div>
+          <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+            <button
+              onClick={() => handleDecision("release")}
+              disabled={!gate?.technicalPass}
+              style={{
+                background: gate?.technicalPass ? "#16a34a" : "#9ca3af",
+                color: "#fff",
+                border: "0",
+                padding: "10px 20px",
+                fontWeight: "bold",
+                cursor: gate?.technicalPass ? "pointer" : "not-allowed",
+              }}
+            >
+              {t.recordReleaseBtn}
+            </button>
+            <button
+              onClick={() => handleDecision("no_release")}
+              style={{
+                background: "#dc2626",
+                color: "#fff",
+                border: "0",
+                padding: "10px 20px",
+                fontWeight: "bold",
+              }}
+            >
+              {t.recordNoReleaseBtn}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Feedback Affordance */}
+      <section className="inspection" style={{ marginTop: "32px" }}>
+        <div className="inspection-heading">
+          <div>
+            <h2>{t.feedbackHeading}</h2>
+            <p style={{ color: "#536151", fontSize: "0.85rem", margin: 0 }}>{t.feedbackSub}</p>
+          </div>
+        </div>
+
+        {fbStatus && (
+          <div style={{ background: "#dcfce7", borderLeft: "4px solid #16a34a", padding: "10px", margin: "12px 0" }}>
+            {fbStatus}
+          </div>
+        )}
+
+        <form onSubmit={handleFeedbackSubmit} style={{ display: "grid", gap: "12px", marginTop: "14px" }}>
+          <div style={{ display: "flex", gap: "20px" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "4px" }}>{t.ratingLabel}</label>
+              <select
+                value={rating}
+                onChange={(e) => setRating(Number(e.target.value))}
+                style={{ padding: "8px", border: "1px solid #aab7a8" }}
+              >
+                {[5, 4, 3, 2, 1].map((n) => (
+                  <option key={n} value={n}>
+                    {n} Star{n > 1 ? "s" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "4px" }}>{t.categoryLabel}</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as any)}
+                style={{ padding: "8px", border: "1px solid #aab7a8" }}
+              >
+                <option value="accuracy">Accuracy</option>
+                <option value="citation">Citation Grounding</option>
+                <option value="safety">Safety & Guardrail</option>
+                <option value="general">General UX</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "4px" }}>{t.noteLabel}</label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="e.g. Citation was grounded, fast response."
+              style={{ width: "100%", padding: "10px", border: "1px solid #aab7a8" }}
+            />
+          </div>
+          <button
+            type="submit"
+            style={{
+              background: "#345d4c",
+              color: "#fff",
+              border: 0,
+              padding: "10px 18px",
+              justifySelf: "start",
+              fontWeight: "bold",
+            }}
+          >
+            {t.submitFeedbackBtn}
+          </button>
+        </form>
+      </section>
+    </main>
+  );
 }
